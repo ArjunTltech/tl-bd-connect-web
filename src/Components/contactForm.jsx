@@ -161,136 +161,155 @@ const ContactForm = () => {
   };
 
   const handleSubmit = async(e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    let hasError = false;
-    let newError = { ...error };
+  let hasError = false;
+  let newError = { ...error };
 
-    // Validate the name field
-    const namePattern = /^[A-Za-z\s]{3,}$/;
-    if (!namePattern.test(formData.name)) {
-      newError.name = "Name cannot be empty and must contain at least 3 letters.";
+  // Validate the name field
+  const namePattern = /^[A-Za-z\s]{3,}$/;
+  if (!namePattern.test(formData.name)) {
+    newError.name = "Name cannot be empty and must contain at least 3 letters.";
+    hasError = true;
+  } else {
+    newError.name = "";
+  }
+
+  // Validate the email field
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailPattern.test(formData.email)) {
+    newError.email = "Email must be in the format example@domain.com.";
+    hasError = true;
+  } else {
+    newError.email = "";
+  }
+
+  // Validate the phone field
+  if (!phone || phone.length < 5) {
+    newError.phone = "Phone number is required.";
+    hasError = true;
+  } else {
+    const normalizedPhoneNumber = phone.replace(/\D/g, ""); 
+    const minPhoneLength = 10;
+
+    if (normalizedPhoneNumber.length < minPhoneLength) {
+      newError.phone = "Phone number should have at least 10 digits.";
       hasError = true;
     } else {
-      newError.name = "";
+      newError.phone = "";
     }
+  }
 
-    // Validate the email field
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(formData.email)) {
-      newError.email = "Email must be in the format example@domain.com.";
-      hasError = true;
-    } else {
-      newError.email = "";
-    }
+  // Validate the message field
+  if (!formData.message || formData.message.trim().length === 0) {
+    newError.message = "Message cannot be blank.";
+    hasError = true;
+  } else {
+    newError.message = "";
+  }
 
-    // Validate the phone field
-    if (!phone || phone.length < 5) {
-      newError.phone = "Phone number is required.";
-      hasError = true;
-    } else {
-      const normalizedPhoneNumber = phone.replace(/\D/g, ""); 
-      const minPhoneLength = 10;
+  // Validate the business field
+  if (!formData.business || formData.business.trim().length === 0) {
+    newError.business = "Please select a business model";
+    hasError = true;
+  } else {
+    newError.business = "";
+  }
 
-      if (normalizedPhoneNumber.length < minPhoneLength) {
-        newError.phone = "Phone number should have at least 10 digits.";
-        hasError = true;
-      } else {
-        newError.phone = "";
-      }
-    }
+  // Validate the selected products field
+  if (selectedProducts.length === 0) {
+    newError.selectedProducts = "Please choose a product.";
+    hasError = true;
+  } else {
+    newError.selectedProducts = "";
+  }
 
-    // Validate the message field
-    if (!formData.message || formData.message.trim().length === 0) {
-      newError.message = "Message cannot be blank.";
-      hasError = true;
-    } else {
-      newError.message = "";
-    }
+  // Validate the selected services field
+  if (items.length === 0) {
+    newError.items = "Please choose a service.";
+    hasError = true;
+  } else {
+    newError.items = "";
+  }
 
-    // Validate the business field
-    if (!formData.business || formData.business.trim().length === 0) {
-      newError.business = "Please select a business model";
-      hasError = true;
-    } else {
-      newError.business = "";
-    }
+  // Validate the location field
+  if (!formData.location || formData.location.trim().length === 0) {
+    newError.location = "Country selection is required.";
+    hasError = true;
+  } else {
+    newError.location = "";
+  }
 
-    // Validate the selected products field
-    if (selectedProducts.length === 0) {
-      newError.selectedProducts = "Please choose a product.";
-      hasError = true;
-    } else {
-      newError.selectedProducts = "";
-    }
+  setError(newError);
 
-    // Validate the selected services field
-    if (items.length === 0) {
-      newError.items = "Please choose a service.";
-      hasError = true;
-    } else {
-      newError.items = "";
-    }
+  if (hasError) {
+    setMessage('There was an issue with your submission');
+    setModalType('error');
+    setShowModal(true);
+    return;
+  }
 
-    // Validate the location field
-    if (!formData.location || formData.location.trim().length === 0) {
-      newError.location = "Country selection is required.";
-      hasError = true;
-    } else {
-      newError.location = "";
-    }
+  const submissionData = {
+    ...formData,
+    phone: phone,
+    products: selectedProducts.join(", "),
+    services: items.join(", ")
+  };
 
-    setError(newError);
+  try {
+    // Save to database
+    const response = await addEnquiry(submissionData);
+    
+    if (response.data.success) {
+      // Prepare WhatsApp message
+      const whatsappNumber = "919061432814"; // Your WhatsApp number without '+' or spaces
+      const whatsappMessage = `New Enquiry:
+Name: ${formData.name}
+Email: ${formData.email}
+Phone: ${phone}
+Business: ${formData.business}
+Products: ${selectedProducts.join(", ")}
+Services: ${items.join(", ")}
+Location: ${formData.location}
+Message: ${formData.message}`;
 
-
-    if (hasError) {
-      setMessage('There was an issue with your submission');
-      setModalType('error');
-      setShowModal(true);
-      return;
-    }
-
-
-    const submissionData = {
-      ...formData,
-      phone: phone,
-      products: selectedProducts.join(", "),
-      services: items.join(", ")
-    };
-
-    try {
-      const response = await addEnquiry(submissionData);
+      // Encode the message for URL
+      const encodedMessage = encodeURIComponent(whatsappMessage);
       
-      if (response.data.success) {
-        setShowModal(true);
-        setMessage(`We've received your submission and will contact you shortly.`);
-        setModalType('success');
+      // Open WhatsApp with the message
+      setShowModal(true);
+      setMessage(`We've received your submission and will contact you shortly.`);
+      setModalType('success');
+      setTimeout(() => {
+        window.open(`https://wa.me/${whatsappNumber}?text=${encodedMessage}`, '_blank');
         
+      }, 1000);
 
-        setFormData({
-          name: '',
-          email: '',
-          message: '',
-          business: '',
-          services: "",
-          products: "",
-          location: ''
-        });
-        setPhone('');
-        setSelectedProduct([]);
-        setItems([]);
-      } else {
-        setShowModal(true);
-        setMessage('There was an error submitting your form. Please try again.');
-        setModalType('error');
-      }
-    } catch (error) {
-      console.error('Error submitting form:', error);
+      // Reset form
+      setFormData({
+        name: '',
+        email: '',
+        message: '',
+        business: '',
+        services: "",
+        products: "",
+        location: ''
+      });
+      setPhone('');
+      setSelectedProduct([]);
+      setItems([]);
+    } else {
       setShowModal(true);
       setMessage('There was an error submitting your form. Please try again.');
       setModalType('error');
     }
-  };
+  } catch (error) {
+    console.error('Error submitting form:', error);
+    setShowModal(true);
+    setMessage('There was an error submitting your form. Please try again.');
+    setModalType('error');
+  }
+};
 
   const removeProduct = (product) => {
     setSelectedProduct(selectedProducts.filter((item) => item !== product));
