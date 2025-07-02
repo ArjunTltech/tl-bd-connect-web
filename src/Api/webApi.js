@@ -82,3 +82,13 @@ export const getBrochure =async()=>{
         
     }
 }
+
+export const getOrganizationDetails =async()=>{
+    try {
+        const response = await axiosInstance.get('/organization/organization-details')
+        return response
+    } catch (error) {
+        console.error(error);
+        
+    }
+    }
